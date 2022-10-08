@@ -19,7 +19,14 @@ def foobar():
 	pass
 
 def frobnoz():
+	print("frobnoz!")
 	pass
+
+dynamic = {
+	"canwe": frobnoz,
+}
+
+dynamic["canwe"]() # yes
 `
 	filename2 := "file2.star"
 	source2 := `
