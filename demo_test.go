@@ -21,6 +21,11 @@ def foobar():
 def frobnoz():
 	pass
 `
+	filename2 := "file2.star"
+	source2 := `
+def fonk():
+	frobnoz()
+`
 
 	// Build the globals map that makes our API's surfaces available in starlark.
 	// (This is actually needed even to parse!)
@@ -36,6 +41,25 @@ def frobnoz():
 	for i := range syntaxObj.Stmts {
 		t.Logf("stmt %d: %s -- comments: %v", i, debugRef(syntaxObj.Stmts[i]), syntaxObj.Stmts[i].Comments())
 	}
+	//t.Logf("%v", )
+
+	// Can we wham statements together?  Just out of curiosity...
+	// And have it be runnable?  Without respecting the file-per-module rule?  And also retain reasonable source offset info?
+	// Huh.  Yep.  Yep we can.
+	syntaxObj2, err := syntax.Parse(filename2, source2, syntax.RetainComments)
+	if err != nil {
+		panic(err)
+	}
+	syntaxObj.Stmts = append(syntaxObj.Stmts, syntaxObj2.Stmts...)
+	// n.b. can also use resolve package for another intermediate step here, but have not found a need yet.
+	prog, err := starlark.FileProgram(syntaxObj, predef.Has)
+	if err != nil {
+		panic(err)
+	}
+	_, err = prog.Init(&starlark.Thread{Name: "wildthread"}, predef)
+	if err != nil {
+		panic(err)
+	}
 
 	// Execute Starlark program in a file.
 	thread := &starlark.Thread{Name: "thethreadname"}
@@ -45,7 +69,7 @@ def frobnoz():
 	}
 
 	// Retrieve a module global.  (This is probably not how we'll have warpforge's system extract results, but it's interesting.)
-	fmt.Printf("result = %v\n", globals["result"])
+	t.Logf("result = %v\n", globals["result"])
 }
 
 func debugRef(stmt syntax.Stmt) string {
