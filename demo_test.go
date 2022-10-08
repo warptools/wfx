@@ -131,15 +131,3 @@ func nameExpr(expr syntax.Expr) string { // mostly meant for use on *syntax.Assi
 		return "?!unrecognized:" + fmt.Sprintf("%T", expr)
 	}
 }
-
-// Reduce the expression to an Ident.  This is valid to use on expressions in syntax.DefStatement.Params.
-func extractIdent(expr syntax.Expr) *syntax.Ident {
-	switch lhs := expr.(type) {
-	case *syntax.Ident:
-		return lhs
-	case *syntax.BinaryExpr:
-		return extractIdent(lhs.X)
-	default:
-		panic("?!unrecognized:" + fmt.Sprintf("%T", expr))
-	}
-}
