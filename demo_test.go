@@ -15,7 +15,8 @@ zonk = "pow"
 
 # This is a comment.
 # On several lines.
-def foobar():
+def foobar(fx=zonk, xy=zonk):
+	"""This is considered docs, also."""
 	pass
 
 def frobnoz():
@@ -46,10 +47,18 @@ def fonk():
 		panic(err)
 	}
 
-	for i := range syntaxObj.Stmts {
-		t.Logf("stmt %d: %s -- comments: %v", i, debugRef(syntaxObj.Stmts[i]), syntaxObj.Stmts[i].Comments())
+	for i, stmt := range syntaxObj.Stmts {
+		t.Logf("stmt %d: %s -- comments: %v", i, debugRef(stmt), stmt.Comments())
+		switch stmt2 := stmt.(type) {
+		case *syntax.DefStmt:
+			if len(stmt2.Params) < 1 {
+				continue
+			}
+			if extractIdent(stmt2.Params[0]).Name == "fx" {
+				t.Logf("  has the pattern")
+			}
+		}
 	}
-	//t.Logf("%v", )
 
 	// Can we wham statements together?  Just out of curiosity...
 	// And have it be runnable?  Without respecting the file-per-module rule?  And also retain reasonable source offset info?
@@ -120,5 +129,17 @@ func nameExpr(expr syntax.Expr) string { // mostly meant for use on *syntax.Assi
 		return lhs.Raw // happily, this still includes the quotes and all.
 	default:
 		return "?!unrecognized:" + fmt.Sprintf("%T", expr)
+	}
+}
+
+// Reduce the expression to an Ident.  This is valid to use on expressions in syntax.DefStatement.Params.
+func extractIdent(expr syntax.Expr) *syntax.Ident {
+	switch lhs := expr.(type) {
+	case *syntax.Ident:
+		return lhs
+	case *syntax.BinaryExpr:
+		return extractIdent(lhs.X)
+	default:
+		panic("?!unrecognized:" + fmt.Sprintf("%T", expr))
 	}
 }
