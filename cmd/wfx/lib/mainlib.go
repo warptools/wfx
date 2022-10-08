@@ -40,7 +40,7 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode in
 
 		if *listtargets {
 			for _, target := range mfxFile.ListTargets() {
-				fmt.Fprintf(stdout, "%s\n", target)
+				fmt.Fprintf(stdout, "%s\n", target.Name())
 			}
 		} else {
 			_ = dryrun // TODO support dryrun mode
@@ -64,7 +64,7 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode in
 			for _, target := range *targets {
 				_, err := starlark.Call(thread, globals[target], []starlark.Value{starlark.None}, nil)
 				if err != nil {
-					fmt.Fprintf(stderr, "%s", err)
+					fmt.Fprintf(stderr, "eval error during target %q: %s", target, err)
 					cli.Exit(14)
 				}
 			}
