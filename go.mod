@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/frankban/quicktest v1.14.3
+	github.com/jawher/mow.cli v1.2.0
 	github.com/warpfork/go-testmark v0.10.0
 	go.starlark.net v0.0.0-20220928063852-5fccb4daaf6d
 )
