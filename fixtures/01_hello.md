@@ -73,3 +73,48 @@ frob!
 
 
 
+dependencies
+------------
+
+Time for something fun: our first dependencies.
+
+Here's our `make.fx` file:
+
+[testmark]:# (dependencies/fs/make.fx)
+```python
+def foobar(fx, depends_on=["shuff"]):
+	print("foobar")
+	baz()
+
+def frobnoz(fx):
+	print("frob!")
+
+def shuff(fx):
+	print("shuff")
+
+def baz(): # still just a regular function
+	print("baz")
+```
+
+We'll only run one target this time:
+
+[testmark]:# (dependencies/sequence)
+```sh
+wfx foobar
+```
+
+But we'll see the effects of several!
+
+[testmark]:# (dependencies/output)
+```text
+shuff
+foobar
+baz
+```
+
+Notice that the output "shuff" comes before anything, including foobar.
+Dependencies are analysed statically, and are evaluated in dependency-order,
+outside of the usual starlark control flow.
+
+The reason dependencies get this special treatment is that we make them
+_run-once_, in any evaluation process.

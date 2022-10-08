@@ -49,8 +49,13 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode in
 
 			globals, err := mfxFile.Eval(stdout)
 			if err != nil {
-				fmt.Fprintf(stderr, "%s", err)
+				fmt.Fprintf(stderr, "%s\n", err)
 				cli.Exit(14)
+			}
+
+			targetsByName := map[string]*wfx.Target{}
+			for _, target := range mfxFile.ListTargets() {
+				targetsByName[target.Name()] = target
 			}
 
 			// TODO shall we actually invoke targets?  manufactured statements?  or just take the globals and invoke?
@@ -61,10 +66,30 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode in
 					fmt.Fprintln(stdout, msg)
 				},
 			}
-			for _, target := range *targets {
-				_, err := starlark.Call(thread, globals[target], []starlark.Value{starlark.None}, nil)
+			for _, targetStr := range *targets {
+				target := targetsByName[targetStr]
+				if target == nil {
+					fmt.Fprintf(stderr, "no target named %q (try running `wfx --listtargets` to see the available targest)", targetStr)
+					cli.Exit(12)
+				}
+
+				// FIXME we're blindly calling dependencies as a demo hack continues to unfold, but this is wrong and needs control
+				for _, depName := range target.DependsOn() {
+					dep := targetsByName[depName]
+					if dep == nil {
+						fmt.Fprintf(stderr, "target %q states dependency on nonexistent target %q", targetStr, depName)
+						cli.Exit(13)
+					}
+					_, err := starlark.Call(thread, globals[dep.Name()], []starlark.Value{starlark.None}, nil)
+					if err != nil {
+						fmt.Fprintf(stderr, "eval error during target %q: %s", dep.Name(), err)
+						cli.Exit(14)
+					}
+				}
+
+				_, err := starlark.Call(thread, globals[target.Name()], []starlark.Value{starlark.None}, nil)
 				if err != nil {
-					fmt.Fprintf(stderr, "eval error during target %q: %s", target, err)
+					fmt.Fprintf(stderr, "eval error during target %q: %s", target.Name(), err)
 					cli.Exit(14)
 				}
 			}
