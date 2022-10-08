@@ -7,7 +7,13 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func (x *MakefxFile) Eval(output io.Writer) (starlark.StringDict, error) {
+// FirstPass performs only the first round eval -- which identifies targets.
+// Starlark is evaluated here, but only whatever is used to initialize values.
+// No functions are called -- that comes later.
+//
+// The global values at the end of the evaluation are returned,
+// but are also stored in the MakefxFile (Eval will use them).
+func (x *MakefxFile) FirstPass(output io.Writer) (starlark.StringDict, error) {
 	predef := starlark.StringDict{}
 
 	prog, err := starlark.FileProgram(x.ast, predef.Has)
@@ -16,7 +22,7 @@ func (x *MakefxFile) Eval(output io.Writer) (starlark.StringDict, error) {
 	}
 
 	thread := &starlark.Thread{
-		Name: "eval",
+		Name: "exploration",
 		Print: func(thread *starlark.Thread, msg string) {
 			fmt.Fprintln(output, msg)
 		},
@@ -26,6 +32,52 @@ func (x *MakefxFile) Eval(output io.Writer) (starlark.StringDict, error) {
 	if err != nil {
 		return nil, err
 	}
+	globals.Freeze()
+	x.globals = globals
 
 	return globals, err
+}
+
+// Eval calls each target, and their dependencies.
+func (x *MakefxFile) Eval(output io.Writer, targetNames []string) error {
+	// walk down the topo order.  keep a set of everything that's supported to be touched.
+	todo := map[string]struct{}{}
+	for _, t := range targetNames {
+		todo[t] = struct{}{}
+	}
+	order, err := toposort(x.targets)
+	if err != nil {
+		return err
+	}
+	for _, stepName := range order {
+		if _, exists := todo[stepName]; !exists {
+			continue
+		}
+		for _, depName := range x.targetsByName[stepName].dependsOn {
+			todo[depName] = struct{}{}
+		}
+	}
+	// Now go backwards and do the things that should be done.
+	for i := len(order) - 1; i >= 0; i-- {
+		if _, exists := todo[order[i]]; !exists {
+			continue
+		}
+		_, err := x.EvalOne(output, order[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// EvalOne calls exactly one target.  It does not call dependencies.
+func (x *MakefxFile) EvalOne(output io.Writer, targetName string) (starlark.Value, error) {
+	thread := &starlark.Thread{
+		Name: "eval",
+		Print: func(thread *starlark.Thread, msg string) {
+			fmt.Fprintln(output, msg)
+		},
+	}
+
+	return starlark.Call(thread, x.globals[targetName], []starlark.Value{starlark.None}, nil)
 }

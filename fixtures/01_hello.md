@@ -66,10 +66,12 @@ And lo:
 
 [testmark]:# (printing/output)
 ```text
+frob!
 foobar
 baz
-frob!
 ```
+
+(Note that frobnoz happened before foobar.  The order of arguments at the command line makes no difference.)
 
 
 

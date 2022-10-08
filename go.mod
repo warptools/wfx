@@ -3,6 +3,7 @@ module github.com/warpsys/wfx
 go 1.19
 
 require (
+	github.com/dominikbraun/graph v0.12.0
 	github.com/frankban/quicktest v1.14.3
 	github.com/jawher/mow.cli v1.2.0
 	github.com/warpfork/go-testmark v0.10.0

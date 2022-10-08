@@ -7,7 +7,6 @@ import (
 	"os"
 
 	cli "github.com/jawher/mow.cli"
-	"go.starlark.net/starlark"
 
 	"github.com/warpsys/wfx"
 )
@@ -45,54 +44,19 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode in
 		} else {
 			_ = dryrun // TODO support dryrun mode
 			_ = targets
-			// TODO probably do toposort code pretty immediately.  varying arg order shouldn't affect action here.
 
-			globals, err := mfxFile.Eval(stdout)
+			_, err := mfxFile.FirstPass(stdout)
 			if err != nil {
 				fmt.Fprintf(stderr, "%s\n", err)
 				cli.Exit(14)
 			}
 
-			targetsByName := map[string]*wfx.Target{}
-			for _, target := range mfxFile.ListTargets() {
-				targetsByName[target.Name()] = target
+			err = mfxFile.Eval(stdout, *targets)
+			if err != nil {
+				fmt.Fprintf(stderr, "%s\n", err)
+				cli.Exit(12)
 			}
 
-			// TODO shall we actually invoke targets?  manufactured statements?  or just take the globals and invoke?
-			// Here we invoke the targets.  This is simple enough.
-			thread := &starlark.Thread{
-				Name: "eval",
-				Print: func(thread *starlark.Thread, msg string) {
-					fmt.Fprintln(stdout, msg)
-				},
-			}
-			for _, targetStr := range *targets {
-				target := targetsByName[targetStr]
-				if target == nil {
-					fmt.Fprintf(stderr, "no target named %q (try running `wfx --listtargets` to see the available targest)", targetStr)
-					cli.Exit(12)
-				}
-
-				// FIXME we're blindly calling dependencies as a demo hack continues to unfold, but this is wrong and needs control
-				for _, depName := range target.DependsOn() {
-					dep := targetsByName[depName]
-					if dep == nil {
-						fmt.Fprintf(stderr, "target %q states dependency on nonexistent target %q", targetStr, depName)
-						cli.Exit(13)
-					}
-					_, err := starlark.Call(thread, globals[dep.Name()], []starlark.Value{starlark.None}, nil)
-					if err != nil {
-						fmt.Fprintf(stderr, "eval error during target %q: %s", dep.Name(), err)
-						cli.Exit(14)
-					}
-				}
-
-				_, err := starlark.Call(thread, globals[target.Name()], []starlark.Value{starlark.None}, nil)
-				if err != nil {
-					fmt.Fprintf(stderr, "eval error during target %q: %s", target.Name(), err)
-					cli.Exit(14)
-				}
-			}
 		}
 	}
 	if err := app.Run(args); err != nil {

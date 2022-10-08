@@ -11,7 +11,11 @@ type MakefxFile struct {
 	ast *syntax.File
 
 	// cached for your convenience, as we validated things.
-	targets []*Target
+	targets       []*Target
+	targetsByName map[string]*Target
+
+	// stored after FirstPass.
+	globals starlark.StringDict
 }
 
 func (x *MakefxFile) ListTargets() []*Target {
@@ -27,6 +31,10 @@ func ParseMakefxFile(filename string, body string) (*MakefxFile, error) {
 	res.targets, err = findTargets(res.ast)
 	if err != nil {
 		return nil, err
+	}
+	res.targetsByName = make(map[string]*Target, len(res.targets))
+	for _, t := range res.targets {
+		res.targetsByName[t.name] = t
 	}
 	return res, nil
 }
