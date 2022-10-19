@@ -32,6 +32,11 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode in
 		if err != nil {
 			cli.Exit(18)
 		}
+
+		// Evaluation happens in roughly three passes, each with their own opportunities to discover deeper kinds of errors:
+		//  Pass 1: The syntax is parsed, and very high-level issues may be found -- then we attempt to discover all the targets.
+		//  Pass 2: The syntax is interpreted more completely -- undefined references will now be noticed, if possible; but evaluation itself still does not yet occur (e.g. dynamic references won't be checked).
+		//  Pass 3: Full evaluation -- now any remaining errors that are within the flow of execution will be found.
 		mfxFile, err := wfx.ParseFxFile("make.fx", string(bs))
 		if err != nil {
 			cli.Exit(17)

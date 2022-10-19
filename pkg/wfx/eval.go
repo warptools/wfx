@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/warpsys/wfx/pkg/action"
+
 	"go.starlark.net/starlark"
 )
 
@@ -14,7 +16,9 @@ import (
 // The global values at the end of the evaluation are returned,
 // but are also stored in the FxFile (Eval will use them).
 func (x *FxFile) FirstPass(output io.Writer) (starlark.StringDict, error) {
-	predef := starlark.StringDict{}
+	predef := starlark.StringDict{
+		"cmd": &action.CmdAction{},
+	}
 
 	prog, err := starlark.FileProgram(x.ast, predef.Has)
 	if err != nil {
