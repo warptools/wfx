@@ -8,7 +8,7 @@ import (
 
 	cli "github.com/jawher/mow.cli"
 
-	"github.com/warpsys/wfx"
+	"github.com/warpsys/wfx/pkg/wfx"
 )
 
 // Main runs the complete interpreter exactly as if the full program.
@@ -32,7 +32,7 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode in
 		if err != nil {
 			cli.Exit(18)
 		}
-		mfxFile, err := wfx.ParseMakefxFile("make.fx", string(bs))
+		mfxFile, err := wfx.ParseFxFile("make.fx", string(bs))
 		if err != nil {
 			cli.Exit(17)
 		}

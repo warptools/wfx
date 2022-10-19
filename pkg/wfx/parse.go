@@ -7,7 +7,7 @@ import (
 	"go.starlark.net/syntax"
 )
 
-type MakefxFile struct {
+type FxFile struct {
 	ast *syntax.File
 
 	// cached for your convenience, as we validated things.
@@ -18,16 +18,16 @@ type MakefxFile struct {
 	globals starlark.StringDict
 }
 
-func (x *MakefxFile) ListTargets() []*Target {
+func (x *FxFile) ListTargets() []*Target {
 	return x.targets
 }
 
-func ParseMakefxFile(filename string, body string) (*MakefxFile, error) {
+func ParseFxFile(filename string, body string) (*FxFile, error) {
 	syntaxObj, err := syntax.Parse(filename, body, syntax.RetainComments)
 	if err != nil {
 		return nil, err
 	}
-	res := &MakefxFile{ast: syntaxObj}
+	res := &FxFile{ast: syntaxObj}
 	res.targets, err = findTargets(res.ast)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ type Target struct {
 	dependsOn []string // dependencies are by string name.
 
 	stmt     *syntax.DefStmt
-	callable starlark.Callable // nil until MakefxFile.Eval has prepared us.
+	callable starlark.Callable // nil until FxFile.Eval has prepared us.
 
 	// future: not entirely clear if these will alwaysalways have stmt and callable.
 }

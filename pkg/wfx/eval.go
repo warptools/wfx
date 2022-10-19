@@ -12,8 +12,8 @@ import (
 // No functions are called -- that comes later.
 //
 // The global values at the end of the evaluation are returned,
-// but are also stored in the MakefxFile (Eval will use them).
-func (x *MakefxFile) FirstPass(output io.Writer) (starlark.StringDict, error) {
+// but are also stored in the FxFile (Eval will use them).
+func (x *FxFile) FirstPass(output io.Writer) (starlark.StringDict, error) {
 	predef := starlark.StringDict{}
 
 	prog, err := starlark.FileProgram(x.ast, predef.Has)
@@ -39,7 +39,7 @@ func (x *MakefxFile) FirstPass(output io.Writer) (starlark.StringDict, error) {
 }
 
 // Eval calls each target, and their dependencies.
-func (x *MakefxFile) Eval(output io.Writer, targetNames []string) error {
+func (x *FxFile) Eval(output io.Writer, targetNames []string) error {
 	// walk down the topo order.  keep a set of everything that's supported to be touched.
 	todo := map[string]struct{}{}
 	for _, t := range targetNames {
@@ -71,7 +71,7 @@ func (x *MakefxFile) Eval(output io.Writer, targetNames []string) error {
 }
 
 // EvalOne calls exactly one target.  It does not call dependencies.
-func (x *MakefxFile) EvalOne(output io.Writer, targetName string) (starlark.Value, error) {
+func (x *FxFile) EvalOne(output io.Writer, targetName string) (starlark.Value, error) {
 	thread := &starlark.Thread{
 		Name: "eval",
 		Print: func(thread *starlark.Thread, msg string) {
