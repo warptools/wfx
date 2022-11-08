@@ -32,8 +32,13 @@ func (a *CmdAction) CallInternal(thread *starlark.Thread, args starlark.Tuple, k
 	case 1:
 		// Exec time.
 		incantation := string(args[0].(starlark.String))
+		if len(kwargs) > 0 {
+			thread.Print(thread, fmt.Sprintf("HELO!: %#v\n", kwargs))
+		}
 		thread.Print(thread, fmt.Sprintf("cmd: would invoke: %q\n", incantation))
 		cmd := exec.Command(a.interpreter, "-c", incantation)
+		// TODO wire IO?!
+		// I wonder if we'll actually end up with an interface for this.  The stdout/stderr/instream distinction might be "about right" even for non-shell stuff.
 		return starlark.None, a.processExecError(cmd.Run(), incantation)
 	default:
 		return starlark.None, a.errInvalidArgs("received too many args")
