@@ -2,6 +2,7 @@ package action
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"syscall"
@@ -10,61 +11,65 @@ import (
 	"go.starlark.net/starlark"
 )
 
-var _ starlark.Callable = (*CmdAction)(nil)
+var _ starlark.Callable = (*CmdPlanConstructor)(nil)
 
-type CmdAction struct {
+type CmdPlanConstructor struct {
 	interpreter string // "/bin/bash" by default.
+
+	// we'll probably put a callable field on this for a "customize" method.  future work.
 }
 
-func (a *CmdAction) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (a *CmdPlanConstructor) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	a.init()
 
-	// This can be called in two modes:
-	// 1. if it's got a string parameter, we're gonna exec something.
-	// 2. if it's got only kwargs, we're gonna customize the cmd instance, and return a new one with those customizations.
 	switch len(args) {
-	case 0:
-		// Then there'd better be some kwargs!
-		if len(kwargs) < 1 {
-			return starlark.None, a.errInvalidArgs("no args received")
-		}
-		panic("wfx: not yet implemented kwargs for cmd action")
 	case 1:
-		// Exec time.
 		incantation := string(args[0].(starlark.String))
-		if len(kwargs) > 0 {
-			thread.Print(thread, fmt.Sprintf("HELO!: %#v\n", kwargs))
+		ap := &ActionPlan{
+			Name_:   "Cmd",
+			Details: incantation,
+			IsExec:  true,
 		}
-		thread.Print(thread, fmt.Sprintf("cmd: would invoke: %q\n", incantation))
-		cmd := exec.Command(a.interpreter, "-c", incantation)
-		// TODO wire IO?!
-		// I wonder if we'll actually end up with an interface for this.  The stdout/stderr/instream distinction might be "about right" even for non-shell stuff.
-		return starlark.None, a.processExecError(cmd.Run(), incantation)
+		ap.Run = func() error {
+			cmd := exec.Command(a.interpreter, "-c", incantation)
+			// Copy any IO handles that have been mutated onto the ActionPlan into the exec cmd var.
+			// TODO set up default IO handles for what doesn't have a specific one.
+			if ap.Stdin != nil {
+				cmd.Stdin = ap.Stdin
+			}
+			if ap.Stdout != nil {
+				cmd.Stdout = ap.Stdout
+				defer ap.Stdout.Close()
+			} else {
+				cmd.Stdout = os.Stdout // FIXME this is a dire placeholder
+			}
+			if ap.Stderr != nil {
+				cmd.Stderr = ap.Stderr
+			} else {
+				cmd.Stderr = os.Stderr // FIXME this is a dire placeholder
+			}
+			return a.processExecError(cmd.Run(), incantation)
+		}
+		return ap, nil
 	default:
-		return starlark.None, a.errInvalidArgs("received too many args")
+		return starlark.None, serum.Errorf("wfx-script-error-invalid-args", "`cmd` expects exactly one positional arg, which should be a string") // FIXME: tweak packages until I can use a constant here without an import cycle problem.
 	}
-
-	return starlark.None, nil
 }
 
-func (a *CmdAction) Name() string          { return "cmd()" }
-func (a *CmdAction) String() string        { return "cmd()" }
-func (a *CmdAction) Type() string          { return "<action:cmd>" }
-func (a *CmdAction) Freeze()               {}
-func (a *CmdAction) Truth() starlark.Bool  { return starlark.True }
-func (a *CmdAction) Hash() (uint32, error) { return 0, nil }
+func (a *CmdPlanConstructor) Name() string          { return "cmd()" }
+func (a *CmdPlanConstructor) String() string        { return "cmd()" }
+func (a *CmdPlanConstructor) Type() string          { return "<actionPlanConstructor:cmd>" }
+func (a *CmdPlanConstructor) Freeze()               {}
+func (a *CmdPlanConstructor) Truth() starlark.Bool  { return starlark.True }
+func (a *CmdPlanConstructor) Hash() (uint32, error) { return 0, nil }
 
-func (a *CmdAction) init() {
+func (a *CmdPlanConstructor) init() {
 	if a.interpreter == "" {
 		a.interpreter = "/bin/bash"
 	}
 }
 
-func (CmdAction) errInvalidArgs(reason string) error {
-	return serum.Errorf("wfx-script-error-invalid-args", "the cmd action needs either one string arg, or kwargs: "+reason) // FIXME: tweak packages until I can use a constant here without an import cycle problem.
-}
-
-func (CmdAction) processExecError(original error, incantation string) error {
+func (CmdPlanConstructor) processExecError(original error, incantation string) error {
 	switch e2 := original.(type) {
 	case nil:
 		return nil

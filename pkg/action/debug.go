@@ -1,8 +1,6 @@
 package action
 
 import (
-	"fmt"
-
 	"go.starlark.net/starlark"
 )
 

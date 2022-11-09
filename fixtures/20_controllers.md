@@ -14,10 +14,9 @@ Given some wfx script:
 ```python
 def foobar(fx):
 	pipe(
-		cmd("echo hi"),
+		cmd("echo hi | tee /tmp/hihi"),
 		cmd("tr h q"),
 	)
-	panic()
 ```
 
 We'll run that one target:

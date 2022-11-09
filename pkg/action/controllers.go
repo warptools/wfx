@@ -1,6 +1,12 @@
 package action
 
-import "go.starlark.net/starlark"
+import (
+	"io"
+	"sync"
+
+	"github.com/serum-errors/go-serum"
+	"go.starlark.net/starlark"
+)
 
 /*
 "Controllers" are pseudo-actions: they're in the features made available to users from the core,
@@ -17,18 +23,15 @@ For example:
 ... will act like a single action, where both cmd actions are run under the control of the pipe action;
 and the pipe action will wire the inputs and outputs of those commands together before it launches them.
 
-(Internally, this works using some heavy wizardry: the "pipe" function there has some magical powers
-imbued in it by the interpreter, beyond normal function control flow, and it uses this to have each
-of the "cmd" functions that are its arguments delay their execution, so that the pipe function can
-gather the processes and wire them together, then launch everything together.  But: don't worry about it.)
-
 */
 
 /*
+Some hypothetical features (not yet all implemented):
+
 	- pipe(a,b,...) -- equiv of shell `a | b | ...`.
 	- gather(a,b,...) -- equiv of shell `{ a ; b ; ... }`.
 	- pipe(gather(a, pipe(b,c)), d) -- a valid construction, just like shell `{a; b|c;} | d` is!
-	- grab(a) -- grabs the readied action plan for `a`, rather than running it.  Lets the user have the same magic building blocks the core code has.  (Although they admittedly still can't match the syntax power in new constructions.)
+
 */
 
 /*
@@ -66,18 +69,47 @@ gather the processes and wire them together, then launch everything together.  B
 	Gonna wanna sleep on it again, but Option3 now seems likely to be more compelling.  Option4 can stay in our pocket (and perhaps still be usable for other purposes, later).
 */
 
-var _ starlark.Callable = (*PipeController)(nil)
+var _ starlark.Callable = (*PipeControllerConstructor)(nil)
 
-type PipeController struct {
-}
+type PipeControllerConstructor struct{}
 
-func (a *PipeController) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func (a *PipeControllerConstructor) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// Prep all the wiring first.
+	var prev *ActionPlan
+	for i, arg := range args {
+		ap, ok := arg.(*ActionPlan)
+		if !ok {
+			return starlark.None, serum.Errorf("wfx-script-error-invalid-args", "`pipe` expects all positional args to be an ActionPlan")
+		}
+		if i > 0 {
+			r, w := io.Pipe()
+			ap.Stdin = r
+			prev.Stdout = w
+		}
+		prev = ap
+	}
+
+	// Okay: let's go.
+	results := make([]error, len(args))
+	var wg sync.WaitGroup
+	wg.Add(len(args))
+	for i, arg := range args {
+		i, arg := i, arg
+		go func() {
+			//fmt.Printf("::: launching %s\n", arg.(*ActionPlan).String())
+			results[i] = arg.(*ActionPlan).Run()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	// TODO actually look at the errors.  probably take the backmost one first because it's least likely to be pipefucked?  dunno.
+	//   or maybe the best thing to do is try to log the order.  that's tricky and generally a race condition though.
 	return starlark.None, nil
 }
 
-func (a *PipeController) Name() string          { return "pipe()" }
-func (a *PipeController) String() string        { return "pipe()" }
-func (a *PipeController) Type() string          { return "<action:pipe>" }
-func (a *PipeController) Freeze()               {}
-func (a *PipeController) Truth() starlark.Bool  { return starlark.True }
-func (a *PipeController) Hash() (uint32, error) { return 0, nil }
+func (a *PipeControllerConstructor) Name() string          { return "pipe()" }
+func (a *PipeControllerConstructor) String() string        { return "pipe()" }
+func (a *PipeControllerConstructor) Type() string          { return "<action:pipe>" }
+func (a *PipeControllerConstructor) Freeze()               {}
+func (a *PipeControllerConstructor) Truth() starlark.Bool  { return starlark.True }
+func (a *PipeControllerConstructor) Hash() (uint32, error) { return 0, nil }

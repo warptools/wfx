@@ -19,30 +19,27 @@ import (
 // but are also stored in the FxFile (Eval will use them).
 func (x *FxFile) FirstPass(output io.Writer) (starlark.StringDict, error) {
 	predef := starlark.StringDict{
-		"cmd":   &action.CmdAction{},
-		"pipe":  &action.PipeController{},
+		"_do":   &action.Do{},
+		"cmd":   &action.CmdPlanConstructor{},
+		"pipe":  &action.PipeControllerConstructor{},
 		"panic": &action.PanicAction{},
 	}
 
-	// We can't actually deconstruct `starlark.FileProgram()`.
-	// It calls `compile.File`, and that package... is marked internal.
-	// But... we can still touch up the AST before that.
-	//
-	// There is one fairly dark side to this: we can only recognize things by name.  Whoops.
-	// ... WAIT, we can run FileProgram and it has side-effects. Such as populating all the bindings!
-	// It's weird if we fuck with the ast after that and run compile again, sure, but... it...works!?
-
-	// starlark.FileProgram(x.ast, predef.Has) // `resolve.File()` might be sufficient, but I'm not sure if that'll have effects on the syntax position info
+	// First pass: resolve everything.
+	// This gives us some early error checking; it also populates all the `resolve.Binding` data into the AST, which is handy.
 	if err := resolve.File(x.ast, predef.Has, starlark.Universe.Has); err != nil {
 		return nil, err
 	}
 
+	// This walk finds a few magic functions and if their arguments are themselves func calls, it rewrites them to have more parameters.
+	// Isn't that neat?
+	// This bit might be a bit of a prototype and may disappear again.
 	syntax.Walk(x.ast, func(n syntax.Node) bool {
 		switch n := n.(type) {
 		case *syntax.CallExpr:
 			if ident, ok := n.Fn.(*syntax.Ident); ok {
 				if ident.Binding.(*resolve.Binding).Scope == 0x5 && ident.Name == "pipe" {
-					fmt.Printf("::magic engaged\n")
+					//fmt.Printf("::magic engaged\n")
 					for _, arg := range n.Args {
 						if call, ok := arg.(*syntax.CallExpr); ok {
 							call.Args = append(call.Args, &syntax.BinaryExpr{
@@ -66,54 +63,39 @@ func (x *FxFile) FirstPass(output io.Writer) (starlark.StringDict, error) {
 				//     So that kind limits the easily accessable options if we wanted to let someone declare their own functions to be controllers and be able to detect that easily, so, take note.
 				// Okay.  Uh.  Overall: this is quite a maze.  Maybe we should just start with only supporting this feature on globals.  Also if you rename them it'll fail.  Sorry.  Future work!
 			}
-			return true
-
-			// Still wondering if we should just have any CallExpr that doesn't have its value be gathered... decorate it with a check for if it returns something with an EffectPlan marker method, and call the thing if it does.
-			// I don't know if that's gonna fuck up syntax position info though, tbh, which is scary.
-
-			// Oh yeah.  You should figure out the error handling story at the same time as all this.
-			// If that turns out to require AST rewriting powers _anyway_, then... well.  That sets all the bars.
-			//
-			// Can we / should we use panics?
-			// Whatever we do, it should work with explicit EffectPlan invocation too, not just with the wild powers.
-		default:
-			return true
 		}
+		return true
 	})
 
+	// This walk finds any statements which contain just a call expression, and rewrites them so they're wrapped in a certain magic function.
+	// We use this to make some very fun DSL.
 	syntax.Walk(x.ast, func(n syntax.Node) bool {
 		switch n := n.(type) {
 		case *syntax.ExprStmt:
-			// I think this is the only case i want to decorate for auto-invoke.
-			// Though it's a little weird, I think I can replace n.X with another call that wraps the original call, and that should do it.
-			fmt.Printf("::ExprStmt found: %T\n", n.X)
+			//fmt.Printf("::ExprStmt found: %T\n", n.X)
 			if c, ok := n.X.(*syntax.CallExpr); ok {
 				n.X = &syntax.CallExpr{
-					Fn:   &syntax.Ident{Name: "print"},
+					Fn:   &syntax.Ident{Name: "_do"},
 					Args: []syntax.Expr{c},
 				}
 			}
-			// Yep.  Worked.
-			return true
-		default:
-			return true
 		}
+		return true
 	})
 
+	// Resolves the whole AST again (we've modified it!) and compiles the program.  Almost ready to run.
 	prog, err := starlark.FileProgram(x.ast, predef.Has)
 	if err != nil {
 		return nil, err
 	}
 
-	syntax.Walk(x.ast, func(n syntax.Node) bool {
-		switch n := n.(type) {
-		case *syntax.CallExpr:
-			fmt.Printf(":::: callExpr now marked at: %#v\n", n) // you can eyeball the syntax position markers in this.  They don't move, despite all our fuckery above!  Neat!
-			return true
-		default:
-			return true
-		}
-	})
+	// syntax.Walk(x.ast, func(n syntax.Node) bool {
+	// 	switch n := n.(type) {
+	// 	case *syntax.CallExpr:
+	// 		fmt.Printf(":::: callExpr now marked at: %#v\n", n) // you can eyeball the syntax position markers in this.  They don't move, despite all our fuckery above!  Neat!
+	// 	}
+	// 	return true
+	// })
 
 	thread := &starlark.Thread{
 		Name: "exploration",
