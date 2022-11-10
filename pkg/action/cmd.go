@@ -2,7 +2,7 @@ package action
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"os/exec"
 	"strconv"
 	"syscall"
@@ -41,12 +41,12 @@ func (a *CmdPlanConstructor) CallInternal(thread *starlark.Thread, args starlark
 				cmd.Stdout = ap.Stdout
 				defer ap.Stdout.Close()
 			} else {
-				cmd.Stdout = os.Stdout // FIXME this is a dire placeholder
+				cmd.Stdout = thread.Local("stdout").(io.Writer)
 			}
 			if ap.Stderr != nil {
 				cmd.Stderr = ap.Stderr
 			} else {
-				cmd.Stderr = os.Stderr // FIXME this is a dire placeholder
+				cmd.Stderr = thread.Local("stderr").(io.Writer)
 			}
 			return a.processExecError(cmd.Run(), incantation)
 		}

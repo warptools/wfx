@@ -115,7 +115,7 @@ func (x *FxFile) FirstPass(output io.Writer) (starlark.StringDict, error) {
 }
 
 // Eval calls each target, and their dependencies.
-func (x *FxFile) Eval(output io.Writer, targetNames []string) error {
+func (x *FxFile) Eval(stdout, stderr io.Writer, targetNames []string) error {
 	// walk down the topo order.  keep a set of everything that's supported to be touched.
 	todo := map[string]struct{}{}
 	for _, t := range targetNames {
@@ -138,7 +138,7 @@ func (x *FxFile) Eval(output io.Writer, targetNames []string) error {
 		if _, exists := todo[order[i]]; !exists {
 			continue
 		}
-		_, err := x.EvalOne(output, order[i])
+		_, err := x.EvalOne(stdout, stderr, order[i])
 		if err != nil {
 			return err
 		}
@@ -147,13 +147,15 @@ func (x *FxFile) Eval(output io.Writer, targetNames []string) error {
 }
 
 // EvalOne calls exactly one target.  It does not call dependencies.
-func (x *FxFile) EvalOne(output io.Writer, targetName string) (starlark.Value, error) {
+func (x *FxFile) EvalOne(stdout, stderr io.Writer, targetName string) (starlark.Value, error) {
 	thread := &starlark.Thread{
 		Name: "eval",
 		Print: func(thread *starlark.Thread, msg string) {
-			fmt.Fprintln(output, msg)
+			fmt.Fprintln(stdout, msg)
 		},
 	}
+	thread.SetLocal("stdout", stdout)
+	thread.SetLocal("stderr", stderr)
 
 	return starlark.Call(thread, x.globals[targetName], []starlark.Value{starlark.None}, nil)
 }
