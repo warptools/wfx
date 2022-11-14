@@ -89,6 +89,8 @@ func (a *PipeControllerConstructor) CallInternal(thread *starlark.Thread, args s
 
 	// Okay: let's go.
 	results := make([]error, len(args))
+	var firstError error
+	var mutex sync.Mutex
 	var wg sync.WaitGroup
 	wg.Add(len(args))
 	for i, arg := range args {
@@ -96,13 +98,21 @@ func (a *PipeControllerConstructor) CallInternal(thread *starlark.Thread, args s
 		go func() {
 			//fmt.Printf("::: launching %s\n", arg.(*ActionPlan).String())
 			results[i] = arg.(*ActionPlan).Run()
+			// We attempt to keep the first error.
+			// This is pretty best-effort.  Fundamentally, there's a lack of synchronization at the kernel interface which lets us reliably know which process exited first.
+			// We *hope* to get it close enough, and we *hope* that the first error we see is the most meaningful one (e.g., the one that's not complaining about pipes that are broken by other commands already exiting unexpectedly!),
+			// but it's impossible to know for sure.
+			mutex.Lock()
+			if firstError == nil {
+				firstError = results[i]
+			}
+			mutex.Unlock()
 			wg.Done()
 		}()
 	}
 	wg.Wait()
-	// TODO actually look at the errors.  probably take the backmost one first because it's least likely to be pipefucked?  dunno.
-	//   or maybe the best thing to do is try to log the order.  that's tricky and generally a race condition though.
-	return starlark.None, nil
+	// TODO this should compose a list of errors.  Also represent them... how?  Do we return a serum error into starlark value?
+	return starlark.None, firstError
 }
 
 func (a *PipeControllerConstructor) Name() string          { return "pipe()" }
