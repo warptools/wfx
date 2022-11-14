@@ -33,7 +33,7 @@ func (a *CmdPlanConstructor) CallInternal(thread *starlark.Thread, args starlark
 		ap.Run = func() error {
 			cmd := exec.Command(a.interpreter, "-c", incantation)
 			// Copy any IO handles that have been mutated onto the ActionPlan into the exec cmd var.
-			// TODO set up default IO handles for what doesn't have a specific one.
+			// Otherwise get default IO handles from the thread locals (which currently means more or less "all the way to the user terminal").
 			if ap.Stdin != nil {
 				cmd.Stdin = ap.Stdin
 			}

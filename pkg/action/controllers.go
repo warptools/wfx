@@ -9,9 +9,7 @@ import (
 )
 
 /*
-"Controllers" are pseudo-actions: they're in the features made available to users from the core,
-and they tend to have effects like actions, but they take *other actions as parameters*,
-and modify the way those actions behave.
+"Controllers" are actions that take other actions as parameters, and influence their execution in some way.
 
 For example:
 

@@ -1,8 +1,9 @@
 controllers
 ===========
 
-"controllers" are special functions that do some interesting things to control flow.
-("pipe" is one of the commonly seen examples of a control.)
+"Controllers" are actions that take other actions as parameters, and influence their execution in some way.
+
+For example, "pipe" is one of the commonly seen examples of a controller.
 
 
 hello controllers
@@ -35,11 +36,13 @@ qi
 
 This may not look like much, but it's a pretty wild feature.
 Normally, a `cmd()` call will be evaluated immediately!
-So what happened here instead?
-The `pipe` function is a _controller_, which means it gets to use some special macro-like features.
-These features let the `pipe` function tell the `cmd()` calls that they're about to be used by the pipe,
-and this causes the `cmd()` calls to behave slightly differently:
-they return `CmdPlan` objects instead of evaluating immediately.
-The `pipe` function then arranges all their I/O wiring, and takes ownership of their invocation.
 
+_So what happened here instead?_
 
+Because the `cmd()` calls are being used as arguments to another function
+(the `pipe()` function -- the controller in this demo),
+instead of being executed immediately, they're returning an "action plan" object instead.
+The `pipe` function then gets to receive those objects, and tweak them a bit:
+in `pipe`'s case, it does some I/O wiring, so the data will feed from one command to the next.
+Then, since `pipe` has received "action plan" objects, it's now it's job take ownership of their invocation, too...
+so, it does so, and in `pipe`'s case, that means running them in parallel.
