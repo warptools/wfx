@@ -56,7 +56,7 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode in
 				cli.Exit(14)
 			}
 
-			err = mfxFile.Eval(stdout, *targets)
+			err = mfxFile.Eval(stdout, stderr, *targets)
 			if err != nil {
 				fmt.Fprintf(stderr, "%s\n", err)
 				cli.Exit(12)
