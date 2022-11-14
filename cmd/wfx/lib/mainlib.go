@@ -8,7 +8,7 @@ import (
 
 	cli "github.com/jawher/mow.cli"
 
-	"github.com/warpsys/wfx/pkg/wfx"
+	"github.com/warptools/wfx/pkg/wfx"
 )
 
 // Main runs the complete interpreter exactly as if the full program.

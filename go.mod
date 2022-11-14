@@ -1,4 +1,4 @@
-module github.com/warpsys/wfx
+module github.com/warptools/wfx
 
 go 1.19
 

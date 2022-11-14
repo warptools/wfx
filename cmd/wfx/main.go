@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/warpsys/wfx/cmd/wfx/lib"
+	"github.com/warptools/wfx/cmd/wfx/lib"
 )
 
 func main() {

@@ -11,7 +11,7 @@ import (
 	"github.com/warpfork/go-testmark"
 	"github.com/warpfork/go-testmark/testexec"
 
-	mainlib "github.com/warpsys/wfx/cmd/wfx/lib"
+	mainlib "github.com/warptools/wfx/cmd/wfx/lib"
 )
 
 func TestAll(t *testing.T) {
