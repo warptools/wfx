@@ -33,12 +33,13 @@ func testFile(t *testing.T, filename string) {
 		}
 
 		doc.BuildDirIndex()
+		patches := testmark.PatchAccumulator{}
 		tester := testexec.Tester{
 			ExecFn: func(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode int, oshit error) {
 				code := mainlib.Main(args, stdin, stdout, stderr)
 				return code, nil
 			},
-			Patches: &testmark.PatchAccumulator{},
+			Patches: &patches,
 			AssertFn: func(t *testing.T, actual, expect string) {
 				qt.Assert(t, actual, qt.Equals, expect)
 			},
@@ -48,5 +49,6 @@ func testFile(t *testing.T, filename string) {
 				tester.Test(t, dir)
 			})
 		}
+		patches.WriteFileWithPatches(doc, filename)
 	})
 }
