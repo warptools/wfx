@@ -66,9 +66,9 @@ And lo:
 
 [testmark]:# (printing/output)
 ```text
-frob!
-foobar
-baz
+during target invokation (target=frobnoz): frob!
+during target invokation (target=foobar): foobar
+during target invokation (target=foobar): baz
 ```
 
 (Note that frobnoz happened before foobar.  The order of arguments at the command line makes no difference.)
@@ -109,9 +109,9 @@ But we'll see the effects of several!
 
 [testmark]:# (dependencies/output)
 ```text
-shuff
-foobar
-baz
+during target invokation (target=shuff): shuff
+during target invokation (target=foobar): foobar
+during target invokation (target=foobar): baz
 ```
 
 Notice that the output "shuff" comes before anything, including foobar.

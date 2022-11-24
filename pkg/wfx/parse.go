@@ -7,21 +7,28 @@ import (
 	"go.starlark.net/syntax"
 )
 
+// FxFile stores a parsed starlark syntax AST plus cached info about targets.
 type FxFile struct {
 	ast *syntax.File
 
 	// cached for your convenience, as we validated things.
 	targets       []*Target
 	targetsByName map[string]*Target
-
-	// stored after FirstPass.
-	globals starlark.StringDict
 }
 
 func (x *FxFile) ListTargets() []*Target {
 	return x.targets
 }
 
+// ParseFxFile parses a an "fx file", which is expected to contain starlark code matching certain conventions.
+// The filename argument is advisory; the body argument is data that has already been loaded.
+//
+// Aside from parsinng the file as starlark syntax (and returning any immediate errors from that),
+// it also looks for the "fx" conventions that denote functions that are "targets",
+// and builds a map of those.
+//
+// Note that what is checked by this function is purely syntax parse.
+// It does not check that references in the code resolve, for example -- that comes later.
 func ParseFxFile(filename string, body string) (*FxFile, error) {
 	syntaxObj, err := syntax.Parse(filename, body, syntax.RetainComments)
 	if err != nil {

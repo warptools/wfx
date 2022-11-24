@@ -50,13 +50,19 @@ func Main(args []string, stdin io.Reader, stdout, stderr io.Writer) (exitcode in
 			_ = dryrun // TODO support dryrun mode
 			_ = targets
 
-			_, err := mfxFile.FirstPass(stdout)
+			evalCtx := wfx.EvalCtx{
+				FxFile: mfxFile,
+				Stdout: stdout,
+				Stderr: stderr,
+			}
+
+			err := evalCtx.FirstPass()
 			if err != nil {
 				fmt.Fprintf(stderr, "%s\n", err)
 				cli.Exit(14)
 			}
 
-			err = mfxFile.Eval(stdout, stderr, *targets)
+			err = evalCtx.InvokeTargets(*targets)
 			if err != nil {
 				fmt.Fprintf(stderr, "%s\n", err)
 				cli.Exit(12)
