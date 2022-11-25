@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/warptools/wfx/pkg/action"
-	"github.com/warptools/wfx/pkg/wfxapi"
-
+	"github.com/serum-errors/go-serum"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+
+	"github.com/warptools/wfx/pkg/action"
+	"github.com/warptools/wfx/pkg/wfxapi"
 )
 
 // EvalCtx shepherds an FxFile through the evaluation process.
@@ -47,6 +48,7 @@ var predef = starlark.StringDict{
 //
 //   - wfx-error-fxfile-unparsable -- if the resolve phase fails,
 //      or if the second resolve after AST modification fails.
+//   - wfx-eval-error -- if the init execution (computes globals) fails.
 func (ctx *EvalCtx) FirstPass() error {
 	// First pass: resolve everything.
 	// This gives us some early error checking; it also populates all the `resolve.Binding` data into the AST, which is handy.
@@ -73,9 +75,9 @@ func (ctx *EvalCtx) FirstPass() error {
 	})
 
 	// Resolves the whole AST again (we've modified it!) and compiles the program.  Almost ready to run.
-	prog, err := starlark.FileProgram(ctx.FxFile.ast, predef.Has)
-	if err != nil {
-		return wfxapi.ErrorFxfileParse(err, "resolve2") // n.b., internally, the "compile" process can't error... the only thing going on inside that can error is `resolve.File` again.
+	prog, dirtyerr := starlark.FileProgram(ctx.FxFile.ast, predef.Has)
+	if dirtyerr != nil {
+		return wfxapi.ErrorFxfileParse(dirtyerr, "resolve2") // n.b., internally, the "compile" process can't error... the only thing going on inside that can error is `resolve.File` again.
 	}
 
 	thread := &starlark.Thread{
@@ -85,14 +87,17 @@ func (ctx *EvalCtx) FirstPass() error {
 		},
 	}
 
-	globals, err := prog.Init(thread, predef)
-	if err != nil {
-		return err
+	globals, dirtyerr := prog.Init(thread, predef)
+	if dirtyerr != nil {
+		return serum.Error("wfx-eval-error",
+			serum.WithCause(dirtyerr),
+			serum.WithDetail("phase", "init"),
+		)
 	}
 	globals.Freeze()
 	ctx.Globals = globals
 
-	return err
+	return nil
 }
 
 // InvokeTargets a graph of targets, starting with their dependencies.
