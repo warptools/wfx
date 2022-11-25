@@ -6,6 +6,8 @@ import (
 
 	"github.com/serum-errors/go-serum"
 	"go.starlark.net/starlark"
+
+	"github.com/warptools/wfx/pkg/wfxapi"
 )
 
 // ActionPlan is something that a wfx script is ready to "do".
@@ -97,7 +99,7 @@ func (a *Do) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs [
 		//     Can't actually hide the silent chill function, because of how we're putting all this together, but we can at least make it less obvious.  "_do" or something.
 		return starlark.None, nil
 	default:
-		return starlark.None, serum.Errorf("wfx-script-error-invalid-args", "`do` expects exactly one positional arg")
+		return starlark.None, serum.Errorf(wfxapi.EcodeScriptInvalid, "`do` expects exactly one positional arg")
 	}
 }
 

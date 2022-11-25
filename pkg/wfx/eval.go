@@ -46,14 +46,14 @@ var predef = starlark.StringDict{
 //
 // Errors:
 //
-//   - wfx-error-fxfile-unparsable -- if the resolve phase fails,
+//   - wfx-script-parsefail -- if the resolve phase fails,
 //      or if the second resolve after AST modification fails.
 //   - wfx-eval-error -- if the init execution (computes globals) fails.
 func (ctx *EvalCtx) FirstPass() error {
 	// First pass: resolve everything.
 	// This gives us some early error checking; it also populates all the `resolve.Binding` data into the AST, which is handy.
 	if err := resolve.File(ctx.FxFile.ast, predef.Has, starlark.Universe.Has); err != nil {
-		return wfxapi.ErrorFxfileParse(err, "resolve")
+		return wfxapi.ErrorScriptParsefail(err, "resolve")
 	}
 
 	// This walk finds any statements which contain just a call expression, and rewrites them so they're wrapped in a certain magic function.
@@ -77,9 +77,11 @@ func (ctx *EvalCtx) FirstPass() error {
 	// Resolves the whole AST again (we've modified it!) and compiles the program.  Almost ready to run.
 	prog, dirtyerr := starlark.FileProgram(ctx.FxFile.ast, predef.Has)
 	if dirtyerr != nil {
-		return wfxapi.ErrorFxfileParse(dirtyerr, "resolve2") // n.b., internally, the "compile" process can't error... the only thing going on inside that can error is `resolve.File` again.
+		return wfxapi.ErrorScriptParsefail(dirtyerr, "resolve2") // n.b., internally, the "compile" process can't error... the only thing going on inside that can error is `resolve.File` again.
 	}
 
+	// Create a "thread".  We're about to partially evaluate the script:
+	// enough to initialize any globals.  (We'll run the actual targets much later; not in this pass.)
 	thread := &starlark.Thread{
 		Name: "exploration",
 		Print: func(thread *starlark.Thread, msg string) {

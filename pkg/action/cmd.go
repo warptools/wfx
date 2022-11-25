@@ -9,6 +9,8 @@ import (
 
 	"github.com/serum-errors/go-serum"
 	"go.starlark.net/starlark"
+
+	"github.com/warptools/wfx/pkg/wfxapi"
 )
 
 var _ starlark.Callable = (*CmdPlanConstructor)(nil)
@@ -52,7 +54,7 @@ func (a *CmdPlanConstructor) CallInternal(thread *starlark.Thread, args starlark
 		}
 		return ap, nil
 	default:
-		return starlark.None, serum.Errorf("wfx-script-error-invalid-args", "`cmd` expects exactly one positional arg, which should be a string") // FIXME: tweak packages until I can use a constant here without an import cycle problem.
+		return starlark.None, serum.Errorf(wfxapi.EcodeScriptInvalid, "`cmd` actions expect exactly one positional arg, which should be a string")
 	}
 }
 
@@ -76,14 +78,14 @@ func (CmdPlanConstructor) processExecError(original error, incantation string) e
 	case *exec.ExitError:
 		if e2.Exited() { // true means code; false means signal
 			code := e2.ExitCode() // I don't think this exists on windows.  Ignoring for now; platform support can be "future work".
-			return serum.Error("wfx-script-aborted-cmd-unhappy",
+			return serum.Error(wfxapi.EcodeActionCmdExit,
 				serum.WithMessageTemplate("cmd {{cmd|q}} exited with code {{exitcode}}"),
 				serum.WithDetail("cmd", incantation),
 				serum.WithDetail("exitcode", strconv.Itoa(code)),
 			)
 		} else {
 			signal := int(e2.Sys().(syscall.WaitStatus).Signal())
-			return serum.Error("wfx-script-aborted-cmd-unhappy",
+			return serum.Error(wfxapi.EcodeActionCmdExit,
 				serum.WithMessageTemplate("cmd {{cmd|q}} exited due to signal {{signal}}"),
 				serum.WithDetail("cmd", incantation),
 				serum.WithDetail("signal", strconv.Itoa(signal)),

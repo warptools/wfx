@@ -1,10 +1,11 @@
 package wfx
 
 import (
-	"fmt"
-
+	"github.com/serum-errors/go-serum"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+
+	"github.com/warptools/wfx/pkg/wfxapi"
 )
 
 // FxFile stores a parsed starlark syntax AST plus cached info about targets.
@@ -122,5 +123,5 @@ func findTargets(ast *syntax.File) (res []*Target, err error) {
 }
 
 func errDependsOnValueRestriction() error {
-	return fmt.Errorf("depends_on clause may only use lists of string literals, or a single string literal")
+	return serum.Errorf(wfxapi.EcodeScriptInvalid, "depends_on clause in target declaration may only use lists of string literals, or a single string literal")
 }

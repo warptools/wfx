@@ -6,6 +6,8 @@ import (
 
 	"github.com/serum-errors/go-serum"
 	"go.starlark.net/starlark"
+
+	"github.com/warptools/wfx/pkg/wfxapi"
 )
 
 /*
@@ -77,7 +79,7 @@ func (a *PipeControllerConstructor) CallInternal(thread *starlark.Thread, args s
 	for i, arg := range args {
 		ap, ok := arg.(*ActionPlan)
 		if !ok {
-			return starlark.None, serum.Errorf("wfx-script-error-invalid-args", "`pipe` expects all positional args to be an ActionPlan")
+			return starlark.None, serum.Errorf(wfxapi.EcodeScriptInvalid, "`pipe` expects all positional args to be an ActionPlan")
 		}
 		if i > 0 {
 			r, w := io.Pipe()
