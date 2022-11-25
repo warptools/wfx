@@ -80,15 +80,13 @@ func (CmdPlanConstructor) processExecError(original error, incantation string) e
 				serum.WithMessageTemplate("cmd {{cmd|q}} exited with code {{exitcode}}"),
 				serum.WithDetail("cmd", incantation),
 				serum.WithDetail("exitcode", strconv.Itoa(code)),
-				serum.WithCause(original),
 			)
 		} else {
 			signal := int(e2.Sys().(syscall.WaitStatus).Signal())
 			return serum.Error("wfx-script-aborted-cmd-unhappy",
-				serum.WithMessageTemplate("cmd {{cmd}} exited due to signal {{signal}}"), // Future: wish there was a "quote" fmt directive we could use here.
+				serum.WithMessageTemplate("cmd {{cmd|q}} exited due to signal {{signal}}"),
 				serum.WithDetail("cmd", incantation),
 				serum.WithDetail("signal", strconv.Itoa(signal)),
-				serum.WithCause(original),
 			)
 		}
 		// fun fact: you can report `e2.SystemTime()` and `e2.UserTime()`, too.  Might be worth making this loggable.
