@@ -71,7 +71,10 @@ during target invokation (target=foobar): foobar
 during target invokation (target=foobar): baz
 ```
 
-(Note that frobnoz happened before foobar.  The order of arguments at the command line makes no difference.)
+Note that frobnoz happened before foobar.  The order of arguments at the command line makes no difference.
+
+Also note that `baz()` _wasn't a target_; it's just a regular function.
+That's why the log lines still say "target=foobar" where "baz" was printed.
 
 
 
